@@ -1,15 +1,24 @@
 const http = require('http'), fs = require('fs'), path = require('path'), { spawn } = require('child_process'), { Readable } = require('stream');
 const cache = new Map();
+// YouTube blocks datacenter IPs; optional Netscape-format cookies via YT_COOKIES env.
+let COOKIES_FILE = null;
+if (process.env.YT_COOKIES) { COOKIES_FILE = '/tmp/yt-cookies.txt'; fs.writeFileSync(COOKIES_FILE, process.env.YT_COOKIES); }
 const PORT = process.env.PORT || 3000;
 
 function findAudio(q) {
   if (cache.has(q)) return Promise.resolve(cache.get(q));
   return new Promise((ok, no) => {
-    const p = spawn('yt-dlp', ['-f', 'bestaudio[ext=m4a]/bestaudio', '-g', '--no-playlist', `ytsearch1:${q}`]);
-    let out = '';
+    const args = ['--js-runtimes', 'node', '-f', 'bestaudio[ext=m4a]/bestaudio', '-g', '--no-playlist'];
+    if (COOKIES_FILE) args.push('--cookies', COOKIES_FILE);
+    const p = spawn('yt-dlp', [...args, `ytsearch1:${q}`]);
+    let out = '', err = '';
     p.stdout.on('data', d => out += d);
+    p.stderr.on('data', d => err += d);
     p.on('error', () => no(new Error('yt-dlp not installed')));
-    p.on('close', () => { const u = out.trim().split('\n')[0]; u ? (cache.set(q, u), ok(u)) : no(new Error('not found')); });
+    p.on('close', () => { const u = out.trim().split('\n')[0]; if (u) { cache.set(q, u); return ok(u); }
+      const msg = (err.split('\n').filter(l => l.startsWith('ERROR')).pop() || 'not found').slice(0, 300);
+      console.error('yt-dlp failed for', q, '->', err.trim().slice(-500));
+      no(new Error(msg)); });
   });
 }
 
