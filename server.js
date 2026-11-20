@@ -10,6 +10,7 @@ function findAudio(q) {
   return new Promise((ok, no) => {
     const args = ['--js-runtimes', 'node', '-f', 'bestaudio[ext=m4a]/bestaudio', '-g', '--no-playlist'];
     if (COOKIES_FILE) args.push('--cookies', COOKIES_FILE);
+    if (process.env.YTDLP_PROXY) args.push('--proxy', process.env.YTDLP_PROXY);
     const p = spawn('yt-dlp', [...args, `ytsearch1:${q}`]);
     let out = '', err = '';
     p.stdout.on('data', d => out += d);
