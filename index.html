@@ -276,6 +276,8 @@ async function play(s){
     extractColors(img);
   };img.src=art;
   $('spin').classList.add('on');
+  au.onerror=null;
+  if(s.previewUrl)au.onerror=()=>{au.onerror=null;au.src=s.previewUrl;au.play().catch(()=>{})};
   au.src='/stream?q='+encodeURIComponent(s.artistName+' '+s.trackName+' audio');
   try{await au.play()}catch{}
   $('spin').classList.remove('on');
